@@ -2,9 +2,13 @@ package io.github.poeschl.kump
 
 import java.util.*
 
-class PixelMatrix(private val xSize: Int, private val ySize: Int) {
+class PixelMatrix(val width: Int, val height: Int) {
 
     private val dataArray = initDataArray()
+
+    fun insertAll(pixels: List<Pixel>) {
+        pixels.forEach { pixel -> insert(pixel) };
+    }
 
     fun insert(pixel: Pixel) {
         val coord = pixel.point
@@ -15,11 +19,18 @@ class PixelMatrix(private val xSize: Int, private val ySize: Int) {
         dataArray[point.y][point.x] = null
     }
 
+    fun processData(action: (Pixel) -> Unit) {
+        dataArray
+            .flatMap { it -> it.toList() }
+            .filterNotNull()
+            .forEach { action(it) }
+    }
+
     override fun toString(): String {
         return Arrays.deepToString(dataArray)
     }
 
     private fun initDataArray(): Array<Array<Pixel?>> {
-        return Array<Array<Pixel?>>(ySize + 1) { Array(xSize + 1) { null } }
+        return Array<Array<Pixel?>>(height + 1) { Array(width + 1) { null } }
     }
 }

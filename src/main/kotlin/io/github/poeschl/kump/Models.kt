@@ -26,3 +26,9 @@ data class Pixel(val point: Point, val color: Color) {
         return point.hashCode()
     }
 }
+
+data class Area(val origin: Point, val endCorner: Point) {
+
+    val width = endCorner.x - origin.x
+    val height = endCorner.y - origin.y
+}

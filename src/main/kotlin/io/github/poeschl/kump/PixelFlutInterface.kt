@@ -1,22 +1,29 @@
 package io.github.poeschl.kump
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
+import mu.KotlinLogging
 import java.awt.Color
 import java.io.*
 import java.net.Socket
+import java.util.stream.IntStream
+import kotlin.system.measureTimeMillis
 
 class PixelFlutInterface(address: String, port: Int) {
 
     companion object {
+        private val LOGGER = KotlinLogging.logger {}
         private const val SIZE_COMMAND = "SIZE"
         private val SIZE_ANSWER_PATTERN = "SIZE (\\d+) (\\d+)".toRegex()
         private const val GET_PX_COMMAND = "PX %d %d"
         private val GET_PX_ANSWER_PATTERN = "PX (\\d+) (\\d+) (\\w+)".toRegex()
         private const val PAINT_PX_COMMAND = "PX %d %d %s"
+        private const val PIXEL_BUFFER_SIZE = 1000
     }
 
     private val socket = Socket(address, port)
-    private val writer = PrintWriter(BufferedWriter(OutputStreamWriter(socket.getOutputStream())))
-    private val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+    private val writer = PrintWriter(socket.getOutputStream().bufferedWriter())
+    private val reader = socket.getInputStream().bufferedReader()
 
     /**
      * Returns the size of the playground as a pair with width and height.
@@ -48,31 +55,56 @@ class PixelFlutInterface(address: String, port: Int) {
         writer.flush()
 
         val pixelAnswer = reader.readLine() ?: ""
-        val matcher = GET_PX_ANSWER_PATTERN.matchEntire(pixelAnswer)
-
-        return if (matcher != null) {
-            val groups = matcher.groupValues
-            return Pixel(
-                Point(
-                    Integer.parseInt(groups[1]),
-                    Integer.parseInt(groups[2])
-                ),
-                convertHexToColor(groups[3])
-            )
-        } else {
-            Pixel(Point(0, 0), Color.BLACK)
-        }
+        return convertToPixel(pixelAnswer)
     }
 
-    fun getPixelArea(start: Point, end: Point) {
-        val bufferSize = 500
-        val sb = StringBuilder()
-        for (i in 0 until bufferSize) {
-            sb.append(String.format(GET_PX_COMMAND, 10, 10 + i))
-            sb.append('\n')
+    fun getPixelArea(start: Point, end: Point): List<Pixel> {
+
+        val requests = mutableListOf<Point>()
+        IntStream.rangeClosed(start.x, end.x).forEach { x ->
+            IntStream.rangeClosed(start.y, end.y).forEach { y ->
+                requests.add(Point(x, y))
+            }
         }
-        writer.print(sb.toString())
-        writer.flush()
+        val chunks = requests.chunked(PIXEL_BUFFER_SIZE)
+
+        LOGGER.debug { "Request ($start -> $end) in ${chunks.size} parts" }
+
+        var totalNetwork = 0L;
+        var totalInput = 0L;
+        val results = mutableListOf<Pixel>()
+
+        chunks.forEach { chunk ->
+            val sb = StringBuilder()
+            var responses: List<String>
+
+            val networkTime = measureTimeMillis {
+                chunk.forEach { point ->
+                    sb.append(String.format(GET_PX_COMMAND, point.x, point.y))
+                    sb.append('\n')
+                }
+                writer.print(sb.toString())
+                writer.flush()
+
+                responses = chunk.indices.map { reader.readLine() }.toList()
+            }
+
+            val inputTime = measureTimeMillis {
+                responses.forEach { string ->
+                    results.add(convertToPixel(string))
+                }
+            }
+
+            totalNetwork += networkTime
+            totalInput += inputTime
+        }
+
+        LOGGER.debug {
+            "Get pixel area ($start -> $end | ${requests.size} Pixels):" +
+                    " Network: $totalNetwork ms, Inputparsing: $totalInput ms"
+        }
+
+        return results
     }
 
     fun close() {

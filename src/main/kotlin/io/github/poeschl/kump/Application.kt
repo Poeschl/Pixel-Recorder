@@ -2,40 +2,90 @@ package io.github.poeschl.kump
 
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
+import kotlinx.coroutines.*
+import mu.KotlinLogging
+import java.awt.image.BufferedImage
+import java.io.File
+import java.util.stream.IntStream
+import javax.imageio.ImageIO
+import kotlin.system.measureTimeMillis
 
 class Application(host: String, port: Int) {
+
+    companion object {
+        private val LOGGER = KotlinLogging.logger { }
+        private const val X_SPLIT = 20
+        private const val Y_SPLIT = 20
+    }
 
     private val flutInterface = PixelFlutInterface(host, port)
 
     fun start() {
         val size = flutInterface.getPlaygroundSize()
-        println("Dump size: $size")
-        val pixels = getPixels(size)
-        println(pixels)
+        LOGGER.info { "Dump size: $size" }
+        val screenshotTime = measureTimeMillis {
+            val imageMatrix = getPixels(size)
+            writeSnapshot(imageMatrix, File("snapshot.png"))
+        }
 
+        LOGGER.debug { "Took snapshot in $screenshotTime ms" }
         flutInterface.close()
     }
 
     private fun getPixels(size: Pair<Int, Int>): PixelMatrix {
         val matrix = PixelMatrix(size.first, size.second)
 
-//        IntStream.rangeClosed(0, size.first)
-//            .parallel()
-//            .forEach { x ->
-//                println("Read x $x")
-//                IntStream.rangeClosed(0, size.second)
-//                    .parallel()
-//                    .forEach { y -> matrix.insert(flutInterface.getPixel(Point(x, y))) }
-//            }
-        flutInterface.getPixelArea(Point(10, 10), Point(20, 10))
+        val xSlices = size.first / X_SPLIT
+        val xPartitial = size.first % xSlices
+        val ySlices = size.second / X_SPLIT
+        val yPartitial = size.second % ySlices
 
+        val areas = mutableListOf<Area>()
+        IntStream.rangeClosed(0, X_SPLIT - 1).forEach { xIndex ->
+            IntStream.rangeClosed(0, Y_SPLIT - 1).forEach { yIndex ->
+                val origin = Point(xSlices * xIndex, ySlices * yIndex)
+                val corner = if (xIndex == 0 && yIndex == 0) {
+                    Point(origin.x + xSlices + xPartitial - 1, origin.y + ySlices + yPartitial - 1)
+                } else {
+                    Point(origin.x + xSlices - 1, origin.y + ySlices - 1)
+                }
+                areas.add(Area(origin, corner))
+            }
+        }
+
+        runBlocking {
+            val deferredData = areas
+                .mapIndexed { index, area ->
+                    async(newSingleThreadContext("Thread-Area-$index")) {
+                        flutInterface.getPixelArea(area.origin, area.endCorner)
+                    }
+                }
+
+            deferredData.forEach { deferred -> matrix.insertAll(deferred.await()) }
+        }
         return matrix
+    }
+
+    private fun writeSnapshot(matrix: PixelMatrix, file: File) {
+        val bufferedImage = BufferedImage(matrix.width, matrix.height, BufferedImage.TYPE_INT_RGB)
+        val canvas = bufferedImage.graphics
+
+        matrix.processData {
+            canvas.color = it.color
+            canvas.fillRect(it.point.x, it.point.y, 1, 1)
+        }
+
+        canvas.dispose()
+        ImageIO.write(bufferedImage, file.extension, file)
     }
 }
 
 fun main(args: Array<String>) {
+    System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG")
     ArgParser(args).parseInto(::Args).run {
-        println("Dumping from $host:$port")
+        val logger = KotlinLogging.logger {}
+
+        logger.info { "Dumping from $host:$port" }
         Application(host, port).start()
     }
 }
