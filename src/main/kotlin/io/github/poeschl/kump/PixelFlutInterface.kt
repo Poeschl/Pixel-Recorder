@@ -1,15 +1,13 @@
 package io.github.poeschl.kump
 
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
 import mu.KotlinLogging
 import java.awt.Color
-import java.io.*
+import java.io.PrintWriter
 import java.net.Socket
 import java.util.stream.IntStream
 import kotlin.system.measureTimeMillis
 
-class PixelFlutInterface(address: String, port: Int) {
+class PixelFlutInterface(address: String, port: Int, private val pixelBufferSize: Int = 1000) {
 
     companion object {
         private val LOGGER = KotlinLogging.logger {}
@@ -18,7 +16,6 @@ class PixelFlutInterface(address: String, port: Int) {
         private const val GET_PX_COMMAND = "PX %d %d"
         private val GET_PX_ANSWER_PATTERN = "PX (\\d+) (\\d+) (\\w+)".toRegex()
         private const val PAINT_PX_COMMAND = "PX %d %d %s"
-        private const val PIXEL_BUFFER_SIZE = 1000
     }
 
     private val socket = Socket(address, port)
@@ -28,7 +25,7 @@ class PixelFlutInterface(address: String, port: Int) {
     /**
      * Returns the size of the playground as a pair with width and height.
      *
-     * @return Pair<width, height>
+     * @return Pair<width, height> The size of the screen.
      */
     fun getPlaygroundSize(): Pair<Int, Int> {
         writer.println(SIZE_COMMAND)
@@ -46,7 +43,7 @@ class PixelFlutInterface(address: String, port: Int) {
     }
 
     /**
-     * Retuns the Pixel on the given position.
+     * Returns the Pixel on the given position.
      *
      * @return The pixel at the point.
      */
@@ -58,7 +55,12 @@ class PixelFlutInterface(address: String, port: Int) {
         return convertToPixel(pixelAnswer)
     }
 
-    fun getPixelArea(start: Point, end: Point): List<Pixel> {
+    /**
+     * Returns the Pixel inside the given rectangle.
+     *
+     * @return The pixels inside the area.
+     */
+    fun getPixelArea(start: Point, end: Point): Set<Pixel> {
 
         val requests = mutableListOf<Point>()
         IntStream.rangeClosed(start.x, end.x).forEach { x ->
@@ -66,13 +68,13 @@ class PixelFlutInterface(address: String, port: Int) {
                 requests.add(Point(x, y))
             }
         }
-        val chunks = requests.chunked(PIXEL_BUFFER_SIZE)
+        val chunks = requests.chunked(pixelBufferSize)
 
         LOGGER.debug { "Request ($start -> $end) in ${chunks.size} parts" }
 
-        var totalNetwork = 0L;
-        var totalInput = 0L;
-        val results = mutableListOf<Pixel>()
+        var totalNetwork = 0L
+        var totalInput = 0L
+        val results = mutableSetOf<Pixel>()
 
         chunks.forEach { chunk ->
             val sb = StringBuilder()
@@ -107,6 +109,51 @@ class PixelFlutInterface(address: String, port: Int) {
         return results
     }
 
+    /**
+     * Set one pixel at the given position.
+     *
+     * @param pixel The pixel to draw on screen.
+     */
+    fun drawPixel(pixel: Pixel) {
+        writer.println(PAINT_PX_COMMAND.format(pixel.point.x, pixel.point.y, convertColorToHex(pixel.color)))
+        writer.flush()
+    }
+
+    /**
+     * Draw an collection of pixels.
+     *
+     * @param pixels A collection of pixels to draw.
+     */
+    fun drawPixels(pixels: Set<Pixel>) {
+
+        val chunks = pixels.chunked(pixelBufferSize)
+        LOGGER.debug { "Sending ${pixels.size} pixels in ${chunks.size} parts" }
+
+        var totalNetwork = 0L
+
+        chunks.forEach { chunk ->
+            val sb = StringBuilder()
+
+            val networkTime = measureTimeMillis {
+                chunk.forEach { pixel ->
+                    sb.append(String.format(PAINT_PX_COMMAND, pixel.point.x, pixel.point.y, convertColorToHex(pixel.color)))
+                    sb.append('\n')
+                }
+                writer.print(sb.toString())
+                writer.flush()
+            }
+
+            totalNetwork += networkTime
+        }
+
+        LOGGER.debug {
+            "Pushed ${pixels.size} out in $totalNetwork ms"
+        }
+    }
+
+    /**
+     * Close all open connections.
+     */
     fun close() {
         writer.close()
         reader.close()

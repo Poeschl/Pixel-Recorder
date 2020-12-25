@@ -4,6 +4,7 @@ import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
 import kotlinx.coroutines.*
 import mu.KotlinLogging
+import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
 import java.util.stream.IntStream
