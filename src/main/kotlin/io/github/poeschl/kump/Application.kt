@@ -2,16 +2,18 @@ package io.github.poeschl.kump
 
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
-import kotlinx.coroutines.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.newSingleThreadContext
+import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
-import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
 import java.util.stream.IntStream
 import javax.imageio.ImageIO
+import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
-class Application(host: String, port: Int) {
+class Application(host: String, port: Int, connections: Int) {
 
     companion object {
         private val LOGGER = KotlinLogging.logger { }
@@ -19,10 +21,10 @@ class Application(host: String, port: Int) {
         private const val Y_SPLIT = 20
     }
 
-    private val flutInterface = PixelFlutInterface(host, port)
+    private val flutInterfaces = createInterfacePool(host, port, connections)
 
     fun start() {
-        val size = flutInterface.getPlaygroundSize()
+        val size = flutInterfaces[0].getPlaygroundSize()
         LOGGER.info { "Dump size: $size" }
         val screenshotTime = measureTimeMillis {
             val imageMatrix = getPixels(size)
@@ -30,7 +32,7 @@ class Application(host: String, port: Int) {
         }
 
         LOGGER.debug { "Took snapshot in $screenshotTime ms" }
-        flutInterface.close()
+        flutInterfaces.forEach { it.close() }
     }
 
     private fun getPixels(size: Pair<Int, Int>): PixelMatrix {
@@ -57,6 +59,7 @@ class Application(host: String, port: Int) {
         runBlocking {
             val deferredData = areas
                 .mapIndexed { index, area ->
+                    val flutInterface = flutInterfaces[index % flutInterfaces.size]
                     async(newSingleThreadContext("Thread-Area-$index")) {
                         flutInterface.getPixelArea(area.origin, area.endCorner)
                     }
@@ -79,6 +82,12 @@ class Application(host: String, port: Int) {
         canvas.dispose()
         ImageIO.write(bufferedImage, file.extension, file)
     }
+
+    private fun createInterfacePool(host: String, port: Int, size: Int): List<PixelFlutInterface> {
+        return IntStream.range(0, size)
+            .mapToObj { PixelFlutInterface(host, port) }
+            .toList()
+    }
 }
 
 fun main(args: Array<String>) {
@@ -86,12 +95,13 @@ fun main(args: Array<String>) {
     ArgParser(args).parseInto(::Args).run {
         val logger = KotlinLogging.logger {}
 
-        logger.info { "Dumping from $host:$port" }
-        Application(host, port).start()
+        logger.info { "Dumping from $host:$port with $connections connections" }
+        Application(host, port, connections).start()
     }
 }
 
 class Args(parser: ArgParser) {
     val host by parser.storing("--host", help = "The host of the pixelflut server").default("localhost")
     val port by parser.storing("-p", "--port", help = "The port of the server") { toInt() }.default(1234)
+    val connections by parser.storing("-c", "--connections", help = "Number of connections to the server") { toInt() }.default(3)
 }
