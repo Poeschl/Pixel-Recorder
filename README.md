@@ -1,4 +1,4 @@
-# PixelFlut-Kump
+# Pixel-Kump
 
 A [PixelFlut](https://github.com/defnull/pixelflut) canvas dumper written in Kotlin.
 
