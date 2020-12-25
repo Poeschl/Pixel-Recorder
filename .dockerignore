@@ -1,0 +1,3 @@
+# Ignore everything except the artifact
+*
+!build/libs/*.jar

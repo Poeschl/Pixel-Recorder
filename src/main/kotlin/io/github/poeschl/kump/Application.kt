@@ -28,7 +28,7 @@ class Application(host: String, port: Int, connections: Int) {
         LOGGER.info { "Dump size: $size" }
         val screenshotTime = measureTimeMillis {
             val imageMatrix = getPixels(size)
-            writeSnapshot(imageMatrix, File("snapshot.png"))
+            writeSnapshot(imageMatrix, File("output/snapshot.png"))
         }
 
         LOGGER.debug { "Took snapshot in $screenshotTime ms" }
