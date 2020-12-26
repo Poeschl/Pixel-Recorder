@@ -17,13 +17,6 @@ version '0.1.0'
 
 sourceCompatibility = JavaVersion.VERSION_11
 
-compileKotlin {
-    kotlinOptions.jvmTarget = JavaVersion.VERSION_11
-}
-compileTestKotlin {
-    kotlinOptions.jvmTarget = JavaVersion.VERSION_11
-}
-
 repositories {
     jcenter()
     mavenCentral()
@@ -37,6 +30,13 @@ dependencies {
     implementation 'org.slf4j:slf4j-simple:1.7.29'
 }
 
+compileKotlin {
+    kotlinOptions.jvmTarget = JavaVersion.VERSION_11
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = JavaVersion.VERSION_11
+}
+
 wrapper {
     distributionType = Wrapper.DistributionType.BIN
     gradleVersion = '6.7.1'
@@ -46,4 +46,8 @@ jar {
     manifest {
         attributes 'Main-Class': 'io.github.poeschl.kump.ApplicationKt'
     }
+}
+
+shadowJar{
+    archiveClassifier.set('')
 }
