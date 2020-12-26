@@ -2,14 +2,21 @@ package io.github.poeschl.kump
 
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import java.awt.image.BufferedImage
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.stream.IntStream
 import javax.imageio.ImageIO
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.createDirectory
+import kotlin.io.path.exists
+import kotlin.io.path.notExists
 import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
@@ -24,8 +31,15 @@ class Application(host: String, port: Int, connections: Int) {
     private val flutInterfaces = createInterfacePool(host, port, connections)
 
     fun start() {
+
         val size = flutInterfaces[0].getPlaygroundSize()
         LOGGER.info { "Dump size: $size" }
+
+        val outputFolder = Path.of("output")
+        if (Files.notExists(outputFolder)) {
+            Files.createDirectory(outputFolder)
+        }
+
         val screenshotTime = measureTimeMillis {
             val imageMatrix = getPixels(size)
             writeSnapshot(imageMatrix, File("output/snapshot.png"))
@@ -60,7 +74,7 @@ class Application(host: String, port: Int, connections: Int) {
             val deferredData = areas
                 .mapIndexed { index, area ->
                     val flutInterface = flutInterfaces[index % flutInterfaces.size]
-                    async(newSingleThreadContext("Thread-Area-$index")) {
+                    async(Dispatchers.IO) {
                         flutInterface.getPixelArea(area.origin, area.endCorner)
                     }
                 }
