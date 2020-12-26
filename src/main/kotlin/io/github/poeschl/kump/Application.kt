@@ -2,6 +2,7 @@ package io.github.poeschl.kump
 
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
+import com.xenomachina.argparser.mainBody
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -106,7 +107,7 @@ class Application(host: String, port: Int, connections: Int) {
     }
 }
 
-fun main(args: Array<String>) {
+fun main(args: Array<String>) = mainBody {
     System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG")
 
     ArgParser(args).parseInto(::Args).run {
