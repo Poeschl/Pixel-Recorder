@@ -4,7 +4,6 @@ import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import java.awt.image.BufferedImage
@@ -13,10 +12,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.stream.IntStream
 import javax.imageio.ImageIO
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.createDirectory
-import kotlin.io.path.exists
-import kotlin.io.path.notExists
 import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
@@ -113,13 +108,15 @@ class Application(host: String, port: Int, connections: Int) {
 
 fun main(args: Array<String>) {
     System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG")
+
     ArgParser(args).parseInto(::Args).run {
         val logger = KotlinLogging.logger {}
 
         logger.info { "Connecting to $host:$port with $connections connections" }
 
-        if (singleSnapshot) {
-            Application(host, port, connections).snapshot()
+        when {
+            singleSnapshot -> Application(host, port, connections).snapshot();
+            else -> logger.warn { "No action selected, please use the --help to get all possible actions" }
         }
     }
 }

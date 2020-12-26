@@ -10,15 +10,19 @@ More coming soon...
 
 ## Commandline parameters
 
-### `--host`
+### `--single`, `--single-snapshot`
+
+Make one snapshot and exit the application.
+
+### `--host <host>`
 
 Specify the host of the targeted pixelflut server. (Default: `localhost`)
 
-### `-p`, `--port`
+### `-p`, `--port <port>`
 
 Specify the port of the targeted pixelflut server. (Default: `1234`)
 
-### `-c`, `--connections`
+### `-c`, `--connections <number>`
 
 Specify number of used connections. (Default: `3`)
 
