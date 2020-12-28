@@ -108,16 +108,16 @@ class Application(host: String, port: Int, connections: Int) {
 }
 
 fun main(args: Array<String>) = mainBody {
-    System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG")
-
     ArgParser(args).parseInto(::Args).run {
-        val logger = KotlinLogging.logger {}
+        if (debug) {
+            System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG")
+        }
 
+        val logger = KotlinLogging.logger {}
         logger.info { "Connecting to $host:$port with $connections connections" }
 
-        when {
-            singleSnapshot -> Application(host, port, connections).snapshot();
-            else -> logger.warn { "No action selected, please use the --help to get all possible actions" }
+        when (mode) {
+            Args.Mode.SINGLE -> Application(host, port, connections).snapshot();
         }
     }
 }
@@ -125,6 +125,13 @@ fun main(args: Array<String>) = mainBody {
 class Args(parser: ArgParser) {
     val host by parser.storing("--host", help = "The host of the pixelflut server").default("localhost")
     val port by parser.storing("-p", "--port", help = "The port of the server") { toInt() }.default(1234)
-    val connections by parser.storing("-c", "--connections", help = "Number of connections to the server") { toInt() }.default(3)
-    val singleSnapshot by parser.flagging("--single","--single-snapshot", help = "Create a snapshot and exit").default(false)
+    val connections by parser.storing("-c", "--connections", help = "Number of connections to the server") { toInt() }
+        .default(3)
+    val debug by parser.flagging("-d", "--debug", help = "Enable debug output. (also time measurements)")
+    val mode by parser.positional("MODE", help = "Select the mode of dumping. Available: 'single'") { Mode.valueOf(this.toUpperCase()) }
+        .default(Mode.SINGLE)
+
+    enum class Mode {
+        SINGLE
+    }
 }
