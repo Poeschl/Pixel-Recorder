@@ -5,6 +5,7 @@ import com.xenomachina.argparser.default
 import com.xenomachina.argparser.mainBody
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import java.awt.Color
@@ -12,8 +13,12 @@ import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.*
 import java.util.stream.IntStream
 import javax.imageio.ImageIO
+import kotlin.concurrent.schedule
 import kotlin.streams.toList
 import kotlin.system.measureTimeMillis
 
@@ -33,16 +38,51 @@ class Application(host: String, port: Int, connections: Int) {
     }
 
     fun snapshot() {
-
-        val size = flutInterfaces[0].getPlaygroundSize()
-        LOGGER.info { "Screenshot size: $size" }
+        val size = getPlaygroundSize()
+        LOGGER.info { "Start snapshoting..." }
 
         val screenshotTime = measureTimeMillis {
-            val imageMatrix = getPixels(size)
+            val imageMatrix = getScreen(size)
             writeSnapshot(imageMatrix, File("output/$SNAPSHOT_FILENAME"))
         }
 
         LOGGER.debug { "Took snapshot in $screenshotTime ms" }
+        flutInterfaces.forEach { it.close() }
+    }
+
+    fun record(period: Int) {
+        val size = getPlaygroundSize()
+        LOGGER.info { "Start recording..." }
+        LOGGER.info { "Press CTRL + C to exit" }
+
+        val areas = createAreas(size)
+        val imageMatrix = PixelMatrix(size.first, size.second)
+
+        val run = true
+        runBlocking {
+            areas.forEachIndexed { index, area ->
+                launch(newSingleThreadContext("area-$index")) {
+                    while (run) {
+                        val timeUpdate = measureTimeMillis {
+                            val flutInterface = flutInterfaces[index % flutInterfaces.size]
+                            updateArea(imageMatrix, flutInterface, area)
+                        }
+                        LOGGER.debug { "Updated area $index in $timeUpdate ms" }
+                    }
+                }
+            }
+            Timer().schedule(0, period * 1000L) {
+                LOGGER.info { "Take recording..." }
+                val file = File(
+                    "output/rec-${
+                        LocalDateTime.now()
+                            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd-kk-mm-ss"))
+                    }.png"
+                )
+                writeSnapshot(imageMatrix, file)
+            }
+        }
+
         flutInterfaces.forEach { it.close() }
     }
 
@@ -53,7 +93,7 @@ class Application(host: String, port: Int, connections: Int) {
         }
     }
 
-    private fun getPixels(size: Pair<Int, Int>): PixelMatrix {
+    private fun getScreen(size: Pair<Int, Int>): PixelMatrix {
         val matrix = PixelMatrix(size.first, size.second)
 
         val areas = createAreas(size)
@@ -71,6 +111,10 @@ class Application(host: String, port: Int, connections: Int) {
         return matrix
     }
 
+    private fun updateArea(imageMatrix: PixelMatrix, pixelInterface: PixelFlutInterface, area: Area) {
+        imageMatrix.insertAll(pixelInterface.getPixelArea(area.origin, area.endCorner))
+    }
+
     private fun writeSnapshot(matrix: PixelMatrix, file: File) {
         val bufferedImage = BufferedImage(matrix.width, matrix.height, BufferedImage.TYPE_INT_RGB)
         val canvas = bufferedImage.graphics
@@ -86,7 +130,7 @@ class Application(host: String, port: Int, connections: Int) {
 
     private fun createInterfacePool(host: String, port: Int, size: Int): List<PixelFlutInterface> {
         return IntStream.range(0, size)
-            .mapToObj { PixelFlutInterface(host, port,) }
+            .mapToObj { PixelFlutInterface(host, port) }
             .toList()
     }
 
@@ -110,6 +154,12 @@ class Application(host: String, port: Int, connections: Int) {
         }
         return areas
     }
+
+    private fun getPlaygroundSize(): Pair<Int, Int> {
+        val size = flutInterfaces[0].getPlaygroundSize()
+        LOGGER.info { "Detected screen size: $size" }
+        return size
+    }
 }
 
 fun main(args: Array<String>) = mainBody {
@@ -122,21 +172,25 @@ fun main(args: Array<String>) = mainBody {
         logger.info { "Connecting to $host:$port with $connections connections" }
 
         when (mode) {
-            Args.Mode.SINGLE -> Application(host, port, connections).snapshot();
+            Args.Mode.SINGLE -> Application(host, port, connections).snapshot()
+            Args.Mode.RECORD -> Application(host, port, connections).record(period)
         }
     }
 }
 
 class Args(parser: ArgParser) {
     val host by parser.storing("--host", help = "The host of the pixelflut server").default("localhost")
-    val port by parser.storing("-p", "--port", help = "The port of the server") { toInt() }.default(1234)
-    val connections by parser.storing("-c", "--connections", help = "Number of connections to the server") { toInt() }
-        .default(3)
+    val port by parser.storing("-p", "--port", help = "The port of the server. (Default: 1234)") { toInt() }.default(1234)
+    val connections by parser.storing("-c", "--connections", help = "Number of connections to the server. (Default: 10)") { toInt() }
+        .default(10)
     val debug by parser.flagging("-d", "--debug", help = "Enable debug output. (also time measurements)")
-    val mode by parser.positional("MODE", help = "Select the mode of dumping. Available: 'single'") { Mode.valueOf(this.toUpperCase()) }
+    val period by parser.storing("--period", help = "The period in seconds in which a image is taken in record mode. (Default: 10)")
+    { toInt() }.default(10)
+    val mode by parser.positional("MODE", help = "Select the mode of dumping. Available: 'single', 'record'")
+    { Mode.valueOf(this.toUpperCase()) }
         .default(Mode.SINGLE)
 
     enum class Mode {
-        SINGLE
+        SINGLE, RECORD
     }
 }
