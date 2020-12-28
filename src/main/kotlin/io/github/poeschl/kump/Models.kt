@@ -1,7 +1,7 @@
 package io.github.poeschl.kump
 
 import java.awt.Color
-import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 data class Point(val x: Int, val y: Int) {
 
@@ -36,7 +36,7 @@ data class Area(val origin: Point, val endCorner: Point) {
 
 class PixelMatrix(val width: Int, val height: Int) {
 
-    private val dataArray = initDataArray()
+    private val data = ConcurrentHashMap<Point, Color>(height * width)
 
     fun insertAll(pixels: Collection<Pixel>) {
         pixels.forEach { pixel -> insert(pixel) }
@@ -44,25 +44,24 @@ class PixelMatrix(val width: Int, val height: Int) {
 
     fun insert(pixel: Pixel) {
         val coord = pixel.point
-        dataArray[coord.y][coord.x] = pixel
+        data[coord] = pixel.color
     }
 
     fun remove(point: Point) {
-        dataArray[point.y][point.x] = null
+        data.remove(point)
     }
 
     fun processData(action: (Pixel) -> Unit) {
-        dataArray
-            .flatMap { it -> it.toList() }
-            .filterNotNull()
+        data
+            .map { Pixel(it.key, it.value) }
             .forEach { action(it) }
     }
 
-    override fun toString(): String {
-        return Arrays.deepToString(dataArray)
+    fun processData(action: (Point, Color) -> Unit) {
+        data.forEach { action(it.key, it.value) } ;
     }
 
-    private fun initDataArray(): Array<Array<Pixel?>> {
-        return Array<Array<Pixel?>>(height + 1) { Array(width + 1) { null } }
+    override fun toString(): String {
+        return data.toString()
     }
 }

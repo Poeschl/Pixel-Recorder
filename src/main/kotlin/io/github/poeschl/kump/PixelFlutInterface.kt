@@ -7,7 +7,7 @@ import java.net.Socket
 import java.util.stream.IntStream
 import kotlin.system.measureTimeMillis
 
-class PixelFlutInterface(address: String, port: Int, private val pixelBufferSize: Int = 1000) {
+class PixelFlutInterface(address: String, port: Int, private val pixelBufferSize: Int = 10000) {
 
     companion object {
         private val LOGGER = KotlinLogging.logger {}

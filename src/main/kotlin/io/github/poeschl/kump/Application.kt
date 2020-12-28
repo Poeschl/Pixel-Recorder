@@ -4,9 +4,10 @@ import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
 import com.xenomachina.argparser.mainBody
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
+import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.Files
@@ -55,6 +56,41 @@ class Application(host: String, port: Int, connections: Int) {
     private fun getPixels(size: Pair<Int, Int>): PixelMatrix {
         val matrix = PixelMatrix(size.first, size.second)
 
+        val areas = createAreas(size)
+
+        runBlocking {
+            areas
+                .forEachIndexed() { index, area ->
+                    val flutInterface = flutInterfaces[index % flutInterfaces.size]
+                    launch(Dispatchers.IO) {
+                        val pixels = flutInterface.getPixelArea(area.origin, area.endCorner)
+                        matrix.insertAll(pixels)
+                    }
+                }
+        }
+        return matrix
+    }
+
+    private fun writeSnapshot(matrix: PixelMatrix, file: File) {
+        val bufferedImage = BufferedImage(matrix.width, matrix.height, BufferedImage.TYPE_INT_RGB)
+        val canvas = bufferedImage.graphics
+
+        matrix.processData { point: Point, color: Color ->
+            canvas.color = color
+            canvas.fillRect(point.x, point.y, 1, 1)
+        }
+
+        canvas.dispose()
+        ImageIO.write(bufferedImage, file.extension, file)
+    }
+
+    private fun createInterfacePool(host: String, port: Int, size: Int): List<PixelFlutInterface> {
+        return IntStream.range(0, size)
+            .mapToObj { PixelFlutInterface(host, port,) }
+            .toList()
+    }
+
+    private fun createAreas(size: Pair<Int, Int>): List<Area> {
         val xSlices = size.first / X_SPLIT
         val xPartitial = size.first % xSlices
         val ySlices = size.second / X_SPLIT
@@ -72,38 +108,7 @@ class Application(host: String, port: Int, connections: Int) {
                 areas.add(Area(origin, corner))
             }
         }
-
-        runBlocking {
-            val deferredData = areas
-                .mapIndexed { index, area ->
-                    val flutInterface = flutInterfaces[index % flutInterfaces.size]
-                    async(Dispatchers.IO) {
-                        flutInterface.getPixelArea(area.origin, area.endCorner)
-                    }
-                }
-
-            deferredData.forEach { deferred -> matrix.insertAll(deferred.await()) }
-        }
-        return matrix
-    }
-
-    private fun writeSnapshot(matrix: PixelMatrix, file: File) {
-        val bufferedImage = BufferedImage(matrix.width, matrix.height, BufferedImage.TYPE_INT_RGB)
-        val canvas = bufferedImage.graphics
-
-        matrix.processData {
-            canvas.color = it.color
-            canvas.fillRect(it.point.x, it.point.y, 1, 1)
-        }
-
-        canvas.dispose()
-        ImageIO.write(bufferedImage, file.extension, file)
-    }
-
-    private fun createInterfacePool(host: String, port: Int, size: Int): List<PixelFlutInterface> {
-        return IntStream.range(0, size)
-            .mapToObj { PixelFlutInterface(host, port) }
-            .toList()
+        return areas
     }
 }
 
