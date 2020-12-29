@@ -21,7 +21,7 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
           restore-keys: ${{ runner.os }}-gradle
       - name: Build Pixel-Kump
-        run: chmod +x ./gradlew && ./gradlew --stacktrace jar shadowJar
+        run: ./gradlew --stacktrace jar shadowJar
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
