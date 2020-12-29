@@ -130,7 +130,10 @@ class Application(host: String, port: Int, connections: Int) {
 
     private fun createInterfacePool(host: String, port: Int, size: Int): List<PixelFlutInterface> {
         return IntStream.range(0, size)
-            .mapToObj { PixelFlutInterface(host, port) }
+            .mapToObj {
+                LOGGER.debug { "Create interface ${it + 1} ..." }
+                PixelFlutInterface(host, port)
+            }
             .toList()
     }
 
