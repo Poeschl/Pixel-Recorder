@@ -3,6 +3,10 @@ package io.github.poeschl.kump
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
 import com.xenomachina.argparser.mainBody
+import io.github.poeschl.kixelflut.Area
+import io.github.poeschl.kixelflut.PixelMatrix
+import io.github.poeschl.kixelflut.Point
+import io.github.poeschl.kixelflut.Pixelflut
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.newSingleThreadContext
@@ -103,7 +107,7 @@ class Application(host: String, port: Int, connections: Int) {
                 .forEachIndexed() { index, area ->
                     val flutInterface = flutInterfaces[index % flutInterfaces.size]
                     launch(Dispatchers.IO) {
-                        val pixels = flutInterface.getPixelArea(area.origin, area.endCorner)
+                        val pixels = flutInterface.getPixels(area.origin, area.endCorner)
                         matrix.insertAll(pixels)
                     }
                 }
@@ -111,8 +115,8 @@ class Application(host: String, port: Int, connections: Int) {
         return matrix
     }
 
-    private fun updateArea(imageMatrix: PixelMatrix, pixelInterface: PixelFlutInterface, area: Area) {
-        imageMatrix.insertAll(pixelInterface.getPixelArea(area.origin, area.endCorner))
+    private fun updateArea(imageMatrix: PixelMatrix, pixelInterface: Pixelflut, area: Area) {
+        imageMatrix.insertAll(pixelInterface.getPixels(area.origin, area.endCorner))
     }
 
     private fun writeSnapshot(matrix: PixelMatrix, file: File) {
@@ -128,11 +132,11 @@ class Application(host: String, port: Int, connections: Int) {
         ImageIO.write(bufferedImage, file.extension, file)
     }
 
-    private fun createInterfacePool(host: String, port: Int, size: Int): List<PixelFlutInterface> {
+    private fun createInterfacePool(host: String, port: Int, size: Int): List<Pixelflut> {
         return IntStream.range(0, size)
             .mapToObj {
                 LOGGER.debug { "Create interface ${it + 1} ..." }
-                PixelFlutInterface(host, port)
+                Pixelflut(host, port)
             }
             .toList()
     }
@@ -159,7 +163,7 @@ class Application(host: String, port: Int, connections: Int) {
     }
 
     private fun getPlaygroundSize(): Pair<Int, Int> {
-        val size = flutInterfaces[0].getPlaygroundSize()
+        val size = flutInterfaces[0].getScreenSize()
         LOGGER.info { "Detected screen size: $size" }
         return size
     }
