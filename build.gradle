@@ -9,6 +9,7 @@ plugins {
     id "org.jetbrains.kotlin.jvm" version "1.6.10"
     id 'idea'
     id 'com.github.johnrengelman.shadow' version '7.1.2'
+    id 'net.researchgate.release' version '2.8.1'
 }
 
 group 'io.github.poeschl'
@@ -29,10 +30,10 @@ dependencies {
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = JavaVersion.VERSION_15
+    kotlinOptions.jvmTarget = project.sourceCompatibility
 }
 compileTestKotlin {
-    kotlinOptions.jvmTarget = JavaVersion.VERSION_15
+    kotlinOptions.jvmTarget = project.sourceCompatibility
 }
 
 jar {
@@ -41,6 +42,21 @@ jar {
     }
 }
 
-shadowJar{
+shadowJar {
     archiveClassifier.set('')
+}
+
+import java.util.regex.Matcher
+
+release {
+    buildTasks = []
+    preTagCommitMessage = ':bookmark: pre tag commit: '
+    tagCommitMessage = ':bookmark: creating tag: '
+    newVersionCommitMessage = ':bookmark: new version commit: '
+    git {
+        requireBranch = 'master'
+    }
+    versionPatterns = [
+            /(\d+)\.(\d+)\.(\d+)([^\d]*$)/: { Matcher m, Project p -> m.replaceAll("${m[0][1]}.${(m[0][2] as int) + 1}.${m[0][3]}${m[0][4]}") }
+    ]
 }
