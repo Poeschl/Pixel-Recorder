@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  record:
+    restart: unless-stopped
+    image: ghcr.io/poeschl/pixel-recorder
+    network_mode: "host"
+    volumes:
+      - ./output:/app/output
+    # Will create a snapshot every 5 minutes with 1 active connection
+    command: --host localhost -c 1 --period 300 record
+
+
