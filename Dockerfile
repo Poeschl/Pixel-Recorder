@@ -1,9 +1,9 @@
-FROM azul/zulu-openjdk-alpine:11-jre
+FROM openjdk:15-jdk-slim
 
 WORKDIR /app
-ADD build/libs/Pixel-Kump-*.jar /app/pixel-kump.jar
+ADD build/libs/Pixel-Recorder-*.jar /app/pixel-recorder.jar
 
-ENTRYPOINT ["java", "-jar", "/app/pixel-kump.jar"]
+ENTRYPOINT ["java", "-jar", "/app/pixel-recorder.jar"]
 CMD ["--help"]
 
 

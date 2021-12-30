@@ -1,17 +1,17 @@
-package io.github.poeschl.kump
+package io.github.poeschl.pixelrecorder
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
 import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
 import com.xenomachina.argparser.mainBody
-import io.github.poeschl.kixelflut.Area
-import io.github.poeschl.kixelflut.PixelMatrix
-import io.github.poeschl.kixelflut.Point
-import io.github.poeschl.kixelflut.Pixelflut
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.newSingleThreadContext
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import mu.KotlinLogging
+import org.slf4j.LoggerFactory
+import xyz.poeschl.kixelflut.Area
+import xyz.poeschl.kixelflut.PixelMatrix
+import xyz.poeschl.kixelflut.Pixelflut
+import xyz.poeschl.kixelflut.Point
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
@@ -54,6 +54,7 @@ class Application(host: String, port: Int, connections: Int) {
         flutInterfaces.forEach { it.close() }
     }
 
+    @DelicateCoroutinesApi
     fun record(period: Int) {
         val size = getPlaygroundSize()
         LOGGER.info { "Start recording..." }
@@ -172,7 +173,8 @@ class Application(host: String, port: Int, connections: Int) {
 fun main(args: Array<String>) = mainBody {
     ArgParser(args).parseInto(::Args).run {
         if (debug) {
-            System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "DEBUG")
+            val rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
+            rootLogger.level = Level.DEBUG
         }
 
         val logger = KotlinLogging.logger {}
@@ -194,7 +196,7 @@ class Args(parser: ArgParser) {
     val period by parser.storing("--period", help = "The period in seconds in which a image is taken in record mode. (Default: 10)")
     { toInt() }.default(10)
     val mode by parser.positional("MODE", help = "Select the mode of dumping. Available: 'single', 'record'")
-    { Mode.valueOf(this.toUpperCase()) }
+    { Mode.valueOf(this.uppercase(Locale.getDefault())) }
         .default(Mode.SINGLE)
 
     enum class Mode {

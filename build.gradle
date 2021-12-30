@@ -1,6 +1,5 @@
 buildscript {
     repositories {
-        jcenter()
         mavenCentral()
     }
 }
@@ -9,43 +8,36 @@ plugins {
     id 'java'
     id "org.jetbrains.kotlin.jvm" version "1.6.10"
     id 'idea'
-    id 'com.github.johnrengelman.shadow' version '7.1.1'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
 group 'io.github.poeschl'
-version '0.1.0'
 
-sourceCompatibility = JavaVersion.VERSION_11
+sourceCompatibility = JavaVersion.VERSION_15
 
 repositories {
-    jcenter()
     mavenCentral()
 }
 
 dependencies {
     implementation 'com.xenomachina:kotlin-argparser:2.0.7'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2-native-mt"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0"
     implementation 'io.github.microutils:kotlin-logging-jvm:2.1.21'
-    implementation 'org.slf4j:slf4j-simple:1.7.32'
-    implementation 'io.github.poeschl:Kixelflut:1.2.0'
+    implementation 'ch.qos.logback:logback-classic:1.2.10'
+    implementation 'xyz.poeschl:Kixelflut:2.0.1'
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = JavaVersion.VERSION_11
+    kotlinOptions.jvmTarget = JavaVersion.VERSION_15
 }
 compileTestKotlin {
-    kotlinOptions.jvmTarget = JavaVersion.VERSION_11
-}
-
-wrapper {
-    distributionType = Wrapper.DistributionType.BIN
-    gradleVersion = '6.7.1'
+    kotlinOptions.jvmTarget = JavaVersion.VERSION_15
 }
 
 jar {
     manifest {
-        attributes 'Main-Class': 'io.github.poeschl.kump.ApplicationKt'
+        attributes 'Main-Class': 'io.github.poeschl.pixelrecorder.ApplicationKt'
     }
 }
 
