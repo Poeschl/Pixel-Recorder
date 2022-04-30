@@ -54,7 +54,7 @@ release {
     tagCommitMessage = ':bookmark: creating tag: '
     newVersionCommitMessage = ':bookmark: new version commit: '
     git {
-        requireBranch = 'master'
+        requireBranch = 'main'
     }
     versionPatterns = [
             /(\d+)\.(\d+)\.(\d+)([^\d]*$)/: { Matcher m, Project p -> m.replaceAll("${m[0][1]}.${(m[0][2] as int) + 1}.${m[0][3]}${m[0][4]}") }
