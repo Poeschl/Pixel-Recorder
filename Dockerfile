@@ -1,4 +1,4 @@
-FROM openjdk:15-jdk-slim
+FROM openjdk:17-jdk-slim
 
 WORKDIR /app
 ADD build/libs/Pixel-Recorder-*.jar /app/pixel-recorder.jar

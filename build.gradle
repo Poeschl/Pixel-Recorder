@@ -6,7 +6,7 @@ buildscript {
 
 plugins {
     id 'java'
-    id "org.jetbrains.kotlin.jvm" version "1.6.20"
+    id 'org.jetbrains.kotlin.jvm' version '1.6.21'
     id 'idea'
     id 'com.github.johnrengelman.shadow' version '7.1.2'
     id 'net.researchgate.release' version '2.8.1'
@@ -14,7 +14,7 @@ plugins {
 
 group 'io.github.poeschl'
 
-sourceCompatibility = JavaVersion.VERSION_15
+sourceCompatibility = JavaVersion.VERSION_17
 
 repositories {
     mavenCentral()
@@ -23,9 +23,9 @@ repositories {
 dependencies {
     implementation 'com.xenomachina:kotlin-argparser:2.0.7'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0"
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.1'
     implementation 'io.github.microutils:kotlin-logging-jvm:2.1.21'
-    implementation 'ch.qos.logback:logback-classic:1.2.10'
+    implementation 'ch.qos.logback:logback-classic:1.2.11'
     implementation 'xyz.poeschl:Kixelflut:2.0.1'
 }
 
