@@ -37,7 +37,7 @@ jobs:
           path: build/libs/
       - name: Docker meta
         id: docker_meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v4
         with:
           images: ghcr.io/poeschl/pixel-recorder
       - name: Set up Docker Buildx
