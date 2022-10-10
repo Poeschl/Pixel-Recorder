@@ -25,7 +25,7 @@ dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.1'
     implementation 'io.github.microutils:kotlin-logging-jvm:2.1.21'
-    implementation 'ch.qos.logback:logback-classic:1.2.11'
+    implementation 'ch.qos.logback:logback-classic:1.4.4'
     implementation 'xyz.poeschl:Kixelflut:2.0.1'
 }
 
